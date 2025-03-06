@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Books</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f2f5;
+            margin: 0;
+        }
+        header {
+            background-color: #343a40;
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+        }
+        nav {
+            margin: 20px;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            margin: 10% auto;
+            width: 50%;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📚 Library Books</h1>
+        <nav>
+            <a href="index.html" class="btn">🏠 Home</a>
+            <button class="btn" onclick="openBookModal()">➕ Add Book</button>
+        </nav>
+    </header>
+
+    <div class="container">
+        <input type="text" id="search-bar" placeholder="🔍 Search Books..." oninput="searchBooks()">
+        
+        <table id="bookTable">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>ISBN</th>
+                    <th>Stock</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>        
+    </div>
+
+    <!-- Add Book Modal -->
+    <div id="book-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBookModal()">&times;</span>
+            <h2>Add New Book</h2>
+            <label>Title:</label>
+            <input type="text" id="book-title" required>
+            <label>Author:</label>
+            <input type="text" id="book-author" required>
+            <label>ISBN:</label>
+            <input type="text" id="book-isbn" required>
+            <label>Stock:</label>
+            <input type="number" id="book-stock" required>
+            <button onclick="saveBook()">✅ Add</button>
+        </div>
+    </div>
+
+    <script>
+        async function checkUserLogin() {
+            try {
+                const response = await fetch('/api/method/frappe.auth.get_logged_user', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+    
+                if (!data.message) {
+                    throw new Error("❌ User is not logged in.");
+                }
+    
+                console.log("✅ Logged in User:", data.message);
+            } catch (error) {
+                console.error("❌ User Authentication Error:", error);
+            }
+        }
+
+        function searchBooks() {
+            let input = document.getElementById("search-bar").value.toLowerCase();
+            let rows = document.querySelectorAll("#bookTable tbody tr"); // ✅ Correct Table ID
+
+            rows.forEach(row => {
+                let title = row.cells[0].textContent.toLowerCase();
+                let author = row.cells[1].textContent.toLowerCase();
+                let isbn = row.cells[2].textContent.toLowerCase();
+
+                if (title.includes(input) || author.includes(input) || isbn.includes(input)) {
+                    row.style.display = "";
+                    highlightText(row, input);  // ✅ Highlight Matching Text
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        // ✅ Function to Highlight Matched Text
+        function highlightText(row, input) {
+            for (let cell of row.cells) {
+                let originalText = cell.textContent;
+                let lowerCaseText = originalText.toLowerCase();
+
+                if (input === "" || !lowerCaseText.includes(input)) {
+                    cell.innerHTML = originalText;  // Reset to original text
+                } else {
+                    let regex = new RegExp(`(${input})`, "gi");
+                    cell.innerHTML = originalText.replace(regex, "<mark>$1</mark>");  // Highlight match
+                }
+            }
+        }
+
+        async function fetchCSRFToken() {
+            try {
+                const response = await fetch("/api/method/library_management.api.get_csrf_token", {
+                    credentials: "include"
+                });
+                const data = await response.json();
+
+                if (!data.message || !data.message.csrf_token) {
+                    throw new Error("❌ CSRF Token NOT found in API response!");
+                }
+
+                console.log("✅ CSRF Token Retrieved:", data.message.csrf_token);
+                localStorage.setItem("csrf_token", data.message.csrf_token); // Store latest token
+            } catch (error) {
+                console.error("❌ Error fetching CSRF Token:", error);
+            }
+        }
+
+
+        // ✅ Get CSRF Token from Cookies or Frappe Global Variable
+        function getCSRFToken() {
+            let csrfToken = localStorage.getItem("csrf_token");
+
+            if (!csrfToken) {
+                console.error("❌ CSRF Token missing! Ensure you are logged in.");
+                return null;
+            }
+
+            console.log("✅ Using Stored CSRF Token:", csrfToken);
+            return csrfToken;
+        }
+
+        // ✅ Fetch Books from API
+        async function fetchBooks() {
+            console.log("🔄 Fetching latest book list...");
+
+            try {
+                const response = await fetch(`/api/method/library_management.api.get_books?nocache=${new Date().getTime()}`, {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0"
+                    }
+                });
+
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+                const data = await response.json();
+                console.log("📚 Books Data (Updated):", data);
+
+                let tableBody = document.querySelector("#bookTable tbody");
+                tableBody.innerHTML = ""; // Clear table
+
+                if (!data.message || data.message.length === 0) {
+                    console.warn("⚠️ No books found.");
+                    return;
+                }
+
+                data.message.forEach(book => {
+                    let row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${book.title}</td>
+                        <td>${book.author}</td>
+                        <td>${book.isbn}</td>
+                        <td>${book.stock}</td>
+                        <td>
+                            <button class="btn" onclick="deleteBook('${book.isbn}')">🗑️ Remove</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                console.log("✅ Table successfully updated.");
+            } catch (error) {
+                console.error("❌ Error loading books:", error);
+            }
+        }
+
+        // ✅ Add a Book
+        async function saveBook() {
+            let title = document.getElementById("book-title").value;
+            let author = document.getElementById("book-author").value;
+            let isbn = document.getElementById("book-isbn").value;
+            let stock = document.getElementById("book-stock").value;
+
+            if (!title || !author || !isbn || !stock) {
+                alert("❌ All fields are required!");
+                return;
+            }
+
+            await fetchCSRFToken(); // Ensure latest CSRF token
+            let csrfToken = getCSRFToken();
+            if (!csrfToken) return alert("❌ CSRF token missing! Try logging in again.");
+
+            try {
+                const response = await fetch("/api/method/library_management.api.add_book", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "X-Frappe-CSRF-Token": csrfToken,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ title, author, isbn, stock })
+                });
+
+                const data = await response.json();
+                console.log("🔍 API Response (Add Book):", data);
+
+                if (!response.ok) throw new Error(data.message || "Error adding book");
+
+                alert("✅ Book added successfully!");
+                closeBookModal(); // Close modal after adding
+
+                console.log("🔄 Fetching updated books...");
+                await fetchBooks();  // 🔄 Refresh books list after adding a book
+            } catch (error) {
+                console.error("❌ Error adding book:", error);
+                alert("Error adding book: " + error.message);
+            }
+        }
+
+        // ✅ Delete a Book
+        async function deleteBook(isbn) {
+            if (!confirm(`Are you sure you want to delete the book with ISBN ${isbn}?`)) return;
+
+            try {
+                await fetchCSRFToken();  // Refresh CSRF token before deleting
+                let csrfToken = getCSRFToken();
+                if (!csrfToken) return alert("❌ Missing CSRF token! Try logging in again.");
+
+                const response = await fetch("/api/method/library_management.api.delete_book", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "X-Frappe-CSRF-Token": csrfToken,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ isbn })
+                });
+
+                const data = await response.json();
+                console.log("🔍 API Response (Delete Book):", data);
+
+                if (!response.ok) throw new Error(data.message || "Error deleting book");
+
+                alert(`✅ Book with ISBN ${isbn} deleted successfully!`);
+
+                console.log("🔄 Fetching books again to update UI...");
+                await fetchBooks();  // 🔄 Refresh table with updated book list
+            } catch (error) {
+                console.error("❌ Error deleting book:", error);
+                alert("Error deleting book: " + error.message);
+            }
+        }
+
+        function openBookModal() { document.getElementById("book-modal").style.display = "block"; }
+        function closeBookModal() { document.getElementById("book-modal").style.display = "none"; }
+    
+        // ✅ Initialize the App
+        (async function init() {
+            await fetchCSRFToken(); // Fetch CSRF token before making requests
+            fetchBooks(); // Load books after CSRF token is stored
+        })();
+
+
+    </script>
+    
+</body>
+</html>

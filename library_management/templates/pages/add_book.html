@@ -1,0 +1,22 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Add New Book{% endblock %}
+
+{% block page_content %}
+<h1>Add New Book</h1>
+<form method="POST" action="/api/method/library_management.api.add_book">
+    <label>Title:</label>
+    <input type="text" name="title" class="form-control" required><br>
+    
+    <label>Author:</label>
+    <input type="text" name="author" class="form-control"><br>
+    
+    <label>ISBN:</label>
+    <input type="text" name="isbn" class="form-control"><br>
+    
+    <label>Stock:</label>
+    <input type="number" name="stock" class="form-control" required><br>
+    
+    <button type="submit" class="btn btn-primary">Add Book</button>
+</form>
+{% endblock %}

@@ -1,0 +1,42 @@
+{
+    "doctype": "DocType",
+    "name": "Book",
+    "module": "Library Management",
+    "custom": 1,
+    "fields": [
+      {
+        "fieldname": "title",
+        "fieldtype": "Data",
+        "label": "Title",
+        "reqd": 1
+      },
+      {
+        "fieldname": "author",
+        "fieldtype": "Data",
+        "label": "Author"
+      },
+      {
+        "fieldname": "isbn",
+        "fieldtype": "Data",
+        "label": "ISBN"
+      },
+      {
+        "fieldname": "publisher",
+        "fieldtype": "Data",
+        "label": "Publisher"
+      },
+      {
+        "fieldname": "num_pages",
+        "fieldtype": "Int",
+        "label": "Number of Pages"
+      },
+      {
+        "fieldname": "stock",
+        "fieldtype": "Int",
+        "label": "Stock",
+        "reqd": 1,
+        "default": 1
+      }
+    ]
+  }
+  

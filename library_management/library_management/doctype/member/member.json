@@ -1,0 +1,31 @@
+{
+    "doctype": "DocType",
+    "name": "Member",
+    "module": "Library Management",
+    "custom": 1,
+    "fields": [
+      {
+        "fieldname": "full_name",
+        "fieldtype": "Data",
+        "label": "Full Name",
+        "reqd": 1
+      },
+      {
+        "fieldname": "email",
+        "fieldtype": "Data",
+        "label": "Email"
+      },
+      {
+        "fieldname": "phone",
+        "fieldtype": "Data",
+        "label": "Phone"
+      },
+      {
+        "fieldname": "debt",
+        "fieldtype": "Currency",
+        "label": "Outstanding Debt",
+        "default": 0
+      }
+    ]
+  }
+  

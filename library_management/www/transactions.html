@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📜 Transactions</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Header */
+        header {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 24px;
+        }
+
+        nav {
+            margin-top: 10px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: white;
+            font-size: 18px;
+            padding: 8px 15px;
+            border-radius: 5px;
+            background-color: #007bff;
+            transition: 0.3s;
+        }
+
+        nav a:hover {
+            background-color: #0056b3;
+        }
+
+        /* Containers */
+        .container {
+            width: 80%;
+            margin: 30px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Form Styling */
+        label {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 15px;
+        }
+
+        /* Button Styling */
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            flex: 1;
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <h1>🔄 Library Transactions</h1>
+        <nav>
+            <a href="index.html">🏠 Home</a>
+        </nav>
+    </header>
+
+    <!-- Transaction Form -->
+    <div class="container">
+        <h2>📖 Transaction</h2>
+        <form id="transactionForm">
+            <label for="transaction_member_email">Member Email:</label>
+            <input type="email" id="transaction_member_email" required>
+
+            <label for="transaction_book_isbn">Book ISBN:</label>
+            <input type="text" id="transaction_book_isbn" required>
+
+            <!-- Buttons are now side by side -->
+            <div class="button-container">
+                <button type="button" onclick="issueBook()">📖 Issue Book</button>
+                <button type="button" onclick="returnBook()">🔄 Return Book</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Search Transactions -->
+    <div class="container">
+        <h2>📜 Transaction History</h2>
+        <input type="text" id="search-bar" class="search-bar" placeholder="🔍 Search transactions..." oninput="searchTransactions()">
+
+        <table id="transactionTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Member Email</th>
+                    <th>Book ISBN</th>
+                    <th>Transaction Type</th>
+                    <th>Date Issued</th>
+                    <th>Date Returned</th>
+                    <th>Fine (Rs.)</th>
+                </tr>
+            </thead>
+            <tbody id="transactionsTableBody"></tbody>
+        </table>
+    </div>
+
+</body>
+</html>
+
+    <script>
+        async function fetchTransactions() {
+            try {
+                let response = await fetch("/api/method/library_management.api.get_transactions");
+                let data = await response.json();
+                
+                if (!data.transactions || !Array.isArray(data.transactions)) {
+                    console.warn("⚠️ Invalid transactions data received.");
+                    return;
+                }
+
+                updateTransactionTable(data.transactions);
+            } catch (error) {
+                console.error("❌ API Error:", error);
+            }
+        }
+
+        function updateTransactionTable(transactions) {
+            let tableBody = document.getElementById("transactionsTableBody");
+            tableBody.innerHTML = ""; // Clear existing rows
+
+            transactions.forEach((transaction, index) => {
+                let row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${transaction.member_email}</td>
+                    <td>${transaction.book_isbn}</td>
+                    <td>${transaction.status}</td>
+                    <td>${transaction.date_issued ? new Date(transaction.date_issued).toLocaleDateString() : "N/A"}</td>
+                    <td>${transaction.date_returned ? new Date(transaction.date_returned).toLocaleDateString() : "N/A"}</td>
+                    <td>${transaction.fine || "0"}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function getCSRFToken() {
+            let csrfToken = localStorage.getItem("csrf_token");
+            if (!csrfToken) {
+                console.error("❌ CSRF Token missing! Ensure you are logged in.");
+                return null;
+            }
+            console.log("✅ Using Stored CSRF Token:", csrfToken);
+            return csrfToken;
+        }
+
+        async function issueBook() {
+            let memberEmail = document.getElementById("transaction_member_email").value.trim();
+            let bookISBN = document.getElementById("transaction_book_isbn").value.trim();
+            let csrfToken = getCSRFToken();
+
+            if (!memberEmail || !bookISBN) {
+                alert("❌ Please enter both Member Email and Book ISBN!");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/method/library_management.api.issue_book", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Frappe-CSRF-Token": csrfToken  // ✅ Corrected CSRF token handling
+                    },
+                    credentials: "include",  // ✅ Ensure cookies are sent
+                    body: JSON.stringify({
+                        member_email: memberEmail,
+                        book_isbn: bookISBN
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    console.error("❌ API Response:", data);
+                    throw new Error(data.message || "❌ Issue Book Failed");
+                }
+
+                alert(`✅ ${data.message}`);
+                fetchTransactions();
+            } catch (error) {
+                console.error("❌ Error issuing book:", error);
+                alert(`❌ ${error.message}`);
+            }
+        }
+
+
+        async function returnBook() {
+            let memberEmail = document.getElementById("transaction_member_email").value.trim();
+            let bookISBN = document.getElementById("transaction_book_isbn").value.trim();
+            let csrfToken = getCSRFToken();
+
+            if (!memberEmail || !bookISBN) {
+                alert("❌ Please enter both Member Email and Book ISBN!");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/method/library_management.api.return_book", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Frappe-CSRF-Token": csrfToken  // ✅ Include CSRF token
+                    },
+                    credentials: "include",  // ✅ Ensure cookies are sent
+                    body: JSON.stringify({
+                        member_email: memberEmail,
+                        book_isbn: bookISBN
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    console.error("❌ API Response:", data);
+                    throw new Error(data.message || "❌ Return Book Failed");
+                }
+
+                alert(`✅ ${data.message}`);
+                fetchTransactions();
+            } catch (error) {
+                console.error("❌ Error returning book:", error);
+                alert(`❌ ${error.message}`);
+            }
+        }
+
+        function searchTransactions() {
+            let input = document.getElementById("search-bar").value.toLowerCase();
+            let rows = document.querySelectorAll("#transactionTable tbody tr");
+
+            rows.forEach(row => {
+                let email = row.cells[1].textContent.toLowerCase();
+                let isbn = row.cells[2].textContent.toLowerCase();
+                let status = row.cells[3].textContent.toLowerCase();
+
+                if (email.includes(input) || isbn.includes(input) || status.includes(input)) {
+                    row.style.display = "";
+                    highlightText(row, input);
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        function highlightText(row, input) {
+            for (let cell of row.cells) {
+                let originalText = cell.textContent;
+                let lowerCaseText = originalText.toLowerCase();
+
+                if (input === "" || !lowerCaseText.includes(input)) {
+                    cell.innerHTML = originalText;
+                } else {
+                    let regex = new RegExp(`(${input})`, "gi");
+                    cell.innerHTML = originalText.replace(regex, "<mark>$1</mark>");
+                }
+            }
+        }
+
+        (async function init() {
+            fetchTransactions();
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+    "doctype": "DocType",
+    "name": "Transaction",
+    "module": "Library Management",
+    "custom": 1,
+    "fields": [
+      {
+        "fieldname": "member",
+        "fieldtype": "Link",
+        "label": "Member",
+        "options": "Member",
+        "reqd": 1
+      },
+      {
+        "fieldname": "book",
+        "fieldtype": "Link",
+        "label": "Book",
+        "options": "Book",
+        "reqd": 1
+      },
+      {
+        "fieldname": "date_issued",
+        "fieldtype": "Date",
+        "label": "Issue Date",
+        "default": "Today"
+      },
+      {
+        "fieldname": "date_returned",
+        "fieldtype": "Date",
+        "label": "Return Date"
+      },
+      {
+        "fieldname": "rent_fee",
+        "fieldtype": "Currency",
+        "label": "Rent Fee",
+        "default": 0
+      }
+    ]
+  }
+  

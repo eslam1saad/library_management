@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Members</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f2f5;
+            margin: 0;
+        }
+        header {
+            background-color: #343a40;
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            margin: 10% auto;
+            width: 50%;
+            border-radius: 5px;
+            text-align: left;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>👥 Library Members</h1>
+        <nav>
+            <a href="index.html" class="btn">🏠 Home</a>
+            <button class="btn" onclick="openMemberModal()">➕ Add Member</button>
+        </nav>
+    </header>    
+
+    <div class="container">
+
+        <input type="text" id="search-bar" placeholder="🔍 Search Members..." oninput="searchMembers()">
+
+        <table id="memberTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>        
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="member-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMemberModal()">&times;</span>
+            <h2>Add New Member</h2>
+            <label>Full Name:</label>
+            <input type="text" id="member-name" required>
+            <label>Email:</label>
+            <input type="email" id="member-email" required>
+            <label>Phone:</label>
+            <input type="text" id="member-phone">
+            <button onclick="saveMember()">✅ Add</button>
+        </div>
+    </div>
+
+    <script>
+        async function fetchCSRFToken() {
+            try {
+                const response = await fetch("/api/method/library_management.api.get_csrf_token", { credentials: "include" });
+                const data = await response.json();
+
+                if (!data.message || !data.message.csrf_token) {
+                    throw new Error("❌ CSRF Token NOT found in API response!");
+                }
+
+                console.log("✅ CSRF Token Retrieved:", data.message.csrf_token);
+                localStorage.setItem("csrf_token", data.message.csrf_token);
+            } catch (error) {
+                console.error("❌ Error fetching CSRF Token:", error);
+            }
+        }
+
+        function getCSRFToken() {
+            let csrfToken = localStorage.getItem("csrf_token");
+            if (!csrfToken) {
+                console.error("❌ CSRF Token missing! Ensure you are logged in.");
+                return null;
+            }
+            console.log("✅ Using Stored CSRF Token:", csrfToken);
+            return csrfToken;
+        }
+
+        function searchMembers() {
+            let input = document.getElementById("search-bar").value.toLowerCase();
+            let rows = document.querySelectorAll("#memberTable tbody tr");
+
+            rows.forEach(row => {
+                let name = row.cells[0].textContent.toLowerCase();
+                let email = row.cells[1].textContent.toLowerCase();
+                let phone = row.cells[2].textContent.toLowerCase();
+
+                if (name.includes(input) || email.includes(input) || phone.includes(input)) {
+                    row.style.display = "";
+                    highlightText(row, input);  // ✅ Highlight Matching Text
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        // ✅ Function to Highlight Matched Text
+        function highlightText(row, input) {
+            for (let cell of row.cells) {
+                let originalText = cell.textContent;
+                let lowerCaseText = originalText.toLowerCase();
+
+                if (input === "" || !lowerCaseText.includes(input)) {
+                    cell.innerHTML = originalText;  // Reset to original text
+                } else {
+                    let regex = new RegExp(`(${input})`, "gi");
+                    cell.innerHTML = originalText.replace(regex, "<mark>$1</mark>");  // Highlight match
+                }
+            }
+        }
+
+
+        function fetchMembers() {
+            console.log("🔄 Fetching latest members list...");
+
+            fetch(`/api/method/library_management.api.get_members?nocache=${new Date().getTime()}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("📚 Members Data (Updated):", data);
+
+                    let tableBody = document.querySelector("#memberTable tbody");
+                    tableBody.innerHTML = ""; // 🔥 Clear table before updating
+
+                    if (!data.message || data.message.length === 0) {
+                        console.warn("⚠️ No members found.");
+                        return;
+                    }
+
+                    data.message.forEach(member => {
+                        let phone = member.phone ? member.phone : "📞 Not Provided";
+                        let row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${member.full_name}</td>
+                            <td>${member.email}</td>
+                            <td>${phone}</td>
+                            <td>
+                                <button class="btn" onclick="deleteMember('${member.email}')">🗑️ Remove</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+
+                    console.log("✅ Table successfully updated.");
+                })
+                .catch(error => console.error("❌ Error loading members:", error));
+        }
+
+        async function addMember() {
+            let name = document.getElementById("member-name").value;
+            let email = document.getElementById("member-email").value;
+            let phone = document.getElementById("member-phone").value;
+
+            if (!name || !email) {
+                alert("❌ Name and email are required!");
+                return;
+            }
+
+            await fetchCSRFToken();
+            let csrfToken = getCSRFToken();
+            if (!csrfToken) return;
+
+            try {
+                const response = await fetch("/api/method/library_management.api.add_member", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "X-Frappe-CSRF-Token": csrfToken,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ full_name: name, email: email, phone: phone })
+                });
+
+                const data = await response.json();
+                console.log("🔍 API Response (Add Member):", data);
+
+                if (!response.ok) throw new Error(data.message || "Error adding member");
+
+                alert("✅ Member added successfully!");
+                closeMemberModal();
+                fetchMembers();
+            } catch (error) {
+                console.error("❌ Error adding member:", error);
+                alert("Error adding member: " + error.message);
+            }
+        }
+
+        async function deleteMember(email) {
+            if (!confirm(`Are you sure you want to delete the member with email ${email}?`)) return;
+
+            try {
+                await fetchCSRFToken();
+                let csrfToken = getCSRFToken();
+                if (!csrfToken) {
+                    alert("❌ CSRF Token is missing. Try logging in again.");
+                    return;
+                }
+
+                // ✅ Fetch latest members list before deleting
+                const checkResponse = await fetch(`/api/method/library_management.api.get_members?nocache=${new Date().getTime()}`);
+                const checkData = await checkResponse.json();
+                console.log("📚 Checking if member exists before deleting:", checkData);
+
+                let memberExists = checkData.message.some(member => member.email === email);
+                if (!memberExists) {
+                    alert(`❌ Member with email ${email} not found in the latest database.`);
+                    fetchMembers();  // Force refresh
+                    return;
+                }
+
+                // ✅ Proceed with deletion
+                const response = await fetch("/api/method/library_management.api.delete_member", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "X-Frappe-CSRF-Token": csrfToken,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                console.log("🔍 API Response (Delete Member):", data);
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Error deleting member");
+                }
+
+                alert("✅ Member deleted successfully!");
+                await fetchMembers();  // 🔄 Refresh table after deletion
+            } catch (error) {
+                console.error("❌ Error deleting member:", error);
+
+                if (error.message.includes("Cannot delete or cancel because")) {
+                    alert("❌ Cannot delete this member because they have linked records (e.g., borrowed books). Please resolve them first.");
+                } else {
+                    alert("Error deleting member: " + error.message);
+                }
+            }
+        }
+
+        async function saveMember() {
+            let fullName = document.getElementById("member-name").value;
+            let email = document.getElementById("member-email").value;
+            let phone = document.getElementById("member-phone").value;
+
+            if (!fullName || !email) {
+                alert("❌ Full Name and Email are required!");
+                return;
+            }
+
+            await fetchCSRFToken(); // Ensure latest CSRF token is used
+            let csrfToken = getCSRFToken();
+            if (!csrfToken) return;
+
+            try {
+                const response = await fetch("/api/method/library_management.api.add_member", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "X-Frappe-CSRF-Token": csrfToken,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ full_name: fullName, email: email, phone: phone })
+                });
+
+                const data = await response.json();
+                console.log("🔍 API Response (Add Member):", data);
+
+                if (!response.ok) throw new Error(data.message || "Error adding member");
+
+                alert("✅ Member added successfully!");
+
+                closeMemberModal();
+                await fetchMembers();  // Refresh members list immediately
+            } catch (error) {
+                console.error("❌ Error adding member:", error);
+                alert("Error adding member: " + error.message);
+            }
+        }
+
+        function openMemberModal() { document.getElementById("member-modal").style.display = "block"; }
+        function closeMemberModal() { document.getElementById("member-modal").style.display = "none"; }
+
+        (async function init() {
+            await fetchCSRFToken();
+            fetchMembers();
+        })();
+    </script>
+</body>
+</html>
